@@ -261,6 +261,7 @@ enum LayerObjectTypeId {
     LayerObjectTypeCoreValidation,              // Instance or device core validation layer object
     LayerObjectTypeBestPractices,               // Instance or device best practices layer object
     LayerObjectTypeGpuAssisted,                 // Instance or device gpu assisted validation layer object
+    LayerObjectTypeSyncValidation,              // Instance or device synchronization validation layer object
     LayerObjectTypeMaxEnum,                     // Max enum count
 };
 
@@ -319,6 +320,7 @@ struct CHECK_ENABLED {
     bool gpu_validation_reserve_binding_slot;
     bool best_practices;
     bool vendor_specific_arm;                       // Vendor-specific validation for Arm platforms
+    bool sync_validation;
 
     void SetAllVendorSpecific(bool value) { std::fill(&vendor_specific_arm, &vendor_specific_arm + 1, value); }
 };
@@ -563,6 +565,7 @@ bool wrap_handles = true;
 #include "gpu_validation.h"
 #include "object_lifetime_validation.h"
 #include "stateless_validation.h"
+#include "synchronization_validation.h"
 #include "thread_safety.h"
 
 namespace vulkan_layer_chassis {
@@ -951,6 +954,9 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo *pCreat
     }
     ProcessConfigAndEnvSettings(OBJECT_LAYER_DESCRIPTION, &local_enables, &local_disables);
 
+    // ZZZ WIP Force sync_val on:
+    local_enables.sync_validation = true;
+
     // Create temporary dispatch vector for pre-calls until instance is created
     std::vector<ValidationObject*> local_object_dispatch;
     // Add VOs to dispatch vector. Order here will be the validation dispatch order!
@@ -996,6 +1002,13 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo *pCreat
     gpu_assisted->container_type = LayerObjectTypeGpuAssisted;
     gpu_assisted->api_version = api_version;
     gpu_assisted->report_data = report_data;
+    auto sync_validation = new SyncValidator;
+    if (local_enables.sync_validation) {
+        local_object_dispatch.emplace_back(sync_validation);
+    }
+    sync_validation->container_type = LayerObjectTypeSyncValidation;
+    sync_validation->api_version = api_version;
+    sync_validation->report_data = report_data;
 
     // If handle wrapping is disabled via the ValidationFeatures extension, override build flag
     if (local_disables.handle_wrapping) {
@@ -1048,6 +1061,9 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateInstance(const VkInstanceCreateInfo *pCreat
     gpu_assisted->instance_dispatch_table = framework->instance_dispatch_table;
     gpu_assisted->enabled = framework->enabled;
     gpu_assisted->disabled = framework->disabled;
+    sync_validation->instance_dispatch_table = framework->instance_dispatch_table;
+    sync_validation->enabled = framework->enabled;
+    sync_validation->disabled = framework->disabled;
 
     for (auto intercept : framework->object_dispatch) {
         intercept->PostCallRecordCreateInstance(pCreateInfo, pAllocator, pInstance, result);
@@ -1193,6 +1209,13 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice gpu, const VkDevice
         gpu_assisted->GetValidationObject(instance_interceptor->object_dispatch, LayerObjectTypeGpuAssisted));
     if (instance_interceptor->enabled.gpu_validation) {
         device_interceptor->object_dispatch.emplace_back(gpu_assisted);
+    }
+    auto sync_validation = new SyncValidator;
+    sync_validation->container_type = LayerObjectTypeSyncValidation;
+    sync_validation->instance_state = reinterpret_cast<SyncValidator *>(
+        sync_validation->GetValidationObject(instance_interceptor->object_dispatch, LayerObjectTypeSyncValidation));
+    if (instance_interceptor->enabled.sync_validation) {
+        device_interceptor->object_dispatch.emplace_back(sync_validation);
     }
 
     // Set per-intercept common data items
