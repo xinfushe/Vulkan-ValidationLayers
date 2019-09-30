@@ -693,6 +693,31 @@ def makeGenOpts(args):
             expandEnumerants  = False)
         ]
 
+    # Helper file generator options for synchronization_validation_types.h
+    genOpts['synchronization_validation_types.h'] = [
+          HelperFileOutputGenerator,
+          HelperFileOutputGeneratorOptions(
+            conventions       = conventions,
+            filename          = 'synchronization_validation_types.h',
+            directory         = directory,
+            apiname           = 'vulkan',
+            profile           = None,
+            versions          = featuresPat,
+            emitversions      = featuresPat,
+            defaultExtensions = 'vulkan',
+            addExtensions     = addExtensionsPat,
+            removeExtensions  = removeExtensionsPat,
+            emitExtensions    = emitExtensionsPat,
+            prefixText        = prefixStrings + vkPrefixStrings,
+            protectFeature    = False,
+            apicall           = 'VKAPI_ATTR ',
+            apientry          = 'VKAPI_CALL ',
+            apientryp         = 'VKAPI_PTR *',
+            alignFuncParam    = 48,
+            expandEnumerants  = False,
+            helper_file_type  = 'synchronization_helper_header')
+        ]
+
 # Generate a target based on the options in the matching genOpts{} object.
 # This is encapsulated in a function so it can be profiled and/or timed.
 # The args parameter is an parsed argument object containing the following
@@ -817,7 +842,6 @@ if __name__ == '__main__':
     from layer_chassis_dispatch_generator import LayerChassisDispatchOutputGenerator, LayerChassisDispatchGeneratorOptions
     from lvt_file_generator import LvtFileOutputGenerator, LvtFileOutputGeneratorOptions
     from command_counter_generator import CommandCounterOutputGenerator, CommandCounterOutputGeneratorOptions
-    from best_practices_generator import BestPracticesOutputGenerator, BestPracticesOutputGeneratorOptions
 
     # Temporary workaround for vkconventions python2 compatibility
     import abc; abc.ABC = abc.ABCMeta('ABC', (object,), {})
