@@ -803,8 +803,9 @@ bool SyncValidator::PreCallValidateCmdCopyBuffer(VkCommandBuffer commandBuffer, 
                                                 SYNC_TRANSFER_TRANSFER_READ, src_range);
             if (hazard.hazard) {
                 // TODO -- add tag information to log msg when useful.
-                skip |= LogError(srcBuffer, string_SyncHazardVUID(hazard.hazard), "Hazard %s for srcBuffer %s, region %" PRIu32,
-                                 string_SyncHazard(hazard.hazard), report_data->FormatHandle(srcBuffer).c_str(), region);
+                skip |= LogError(srcBuffer, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyBuffer: Hazard %s for srcBuffer %s, region %" PRIu32, string_SyncHazard(hazard.hazard),
+                                 report_data->FormatHandle(srcBuffer).c_str(), region);
             }
         }
         if ((dst_mem != VK_NULL_HANDLE) && !skip) {
@@ -812,8 +813,9 @@ bool SyncValidator::PreCallValidateCmdCopyBuffer(VkCommandBuffer commandBuffer, 
             auto hazard = context->DetectHazard(VulkanTypedHandle(dst_mem, kVulkanObjectTypeDeviceMemory),
                                                 SYNC_TRANSFER_TRANSFER_WRITE, dst_range);
             if (hazard.hazard) {
-                skip |= LogError(dstBuffer, string_SyncHazardVUID(hazard.hazard), "Hazard %s for dstBuffer %s, region %" PRIu32,
-                                 string_SyncHazard(hazard.hazard), report_data->FormatHandle(dstBuffer).c_str(), region);
+                skip |= LogError(dstBuffer, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyBuffer: Hazard %s for dstBuffer %s, region %" PRIu32, string_SyncHazard(hazard.hazard),
+                                 report_data->FormatHandle(dstBuffer).c_str(), region);
             }
         }
         if (skip) break;
@@ -871,8 +873,9 @@ bool SyncValidator::PreCallValidateCmdCopyImage(VkCommandBuffer commandBuffer, V
             auto hazard = context->DetectHazard(*src_image, SYNC_TRANSFER_TRANSFER_READ, copy_region.srcSubresource,
                                                 copy_region.srcOffset, copy_region.extent);
             if (hazard.hazard) {
-                skip |= LogError(srcImage, string_SyncHazardVUID(hazard.hazard), "Hazard %s for srcImage %s, region %" PRIu32,
-                                 string_SyncHazard(hazard.hazard), report_data->FormatHandle(srcImage).c_str(), region);
+                skip |= LogError(srcImage, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyImage: Hazard %s for srcImage %s, region %" PRIu32, string_SyncHazard(hazard.hazard),
+                                 report_data->FormatHandle(srcImage).c_str(), region);
             }
         }
 
@@ -882,8 +885,9 @@ bool SyncValidator::PreCallValidateCmdCopyImage(VkCommandBuffer commandBuffer, V
             auto hazard = context->DetectHazard(*dst_image, SYNC_TRANSFER_TRANSFER_WRITE, copy_region.dstSubresource,
                                                 copy_region.dstOffset, dst_copy_extent);
             if (hazard.hazard) {
-                skip |= LogError(dstImage, string_SyncHazardVUID(hazard.hazard), "Hazard %s for dstImage %s, region %" PRIu32,
-                                 string_SyncHazard(hazard.hazard), report_data->FormatHandle(dstImage).c_str(), region);
+                skip |= LogError(dstImage, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyImage: Hazard %s for dstImage %s, region %" PRIu32, string_SyncHazard(hazard.hazard),
+                                 report_data->FormatHandle(dstImage).c_str(), region);
             }
             if (skip) break;
         }
@@ -948,8 +952,9 @@ bool SyncValidator::PreCallValidateCmdPipelineBarrier(VkCommandBuffer commandBuf
         const auto hazard = DetectImageBarrierHazard(*context, *image_state, src_exec_scope, src_stage_accesses, barrier);
         if (hazard.hazard) {
             // TODO -- add tag information to log msg when useful.
-            skip |= LogError(barrier.image, string_SyncHazardVUID(hazard.hazard), "Hazard %s for image barrier %" PRIu32 " %s",
-                             string_SyncHazard(hazard.hazard), index, report_data->FormatHandle(barrier.image).c_str());
+            skip |= LogError(barrier.image, string_SyncHazardVUID(hazard.hazard),
+                             "vkCmdPipelineBarrier: Hazard %s for image barrier %" PRIu32 " %s", string_SyncHazard(hazard.hazard),
+                             index, report_data->FormatHandle(barrier.image).c_str());
         }
     }
 
@@ -1119,7 +1124,8 @@ bool SyncValidator::PreCallValidateCmdCopyBufferToImage(VkCommandBuffer commandB
                                                 SYNC_TRANSFER_TRANSFER_READ, src_range);
             if (hazard.hazard) {
                 // TODO -- add tag information to log msg when useful.
-                skip |= LogError(srcBuffer, string_SyncHazardVUID(hazard.hazard), "Hazard %s for srcBuffer %s, region %" PRIu32,
+                skip |= LogError(srcBuffer, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyBufferToImage: Hazard %s for srcBuffer %s, region %" PRIu32,
                                  string_SyncHazard(hazard.hazard), report_data->FormatHandle(srcBuffer).c_str(), region);
             }
         }
@@ -1127,7 +1133,8 @@ bool SyncValidator::PreCallValidateCmdCopyBufferToImage(VkCommandBuffer commandB
             auto hazard = context->DetectHazard(*dst_image, SYNC_TRANSFER_TRANSFER_WRITE, copy_region.imageSubresource,
                                                 copy_region.imageOffset, copy_region.imageExtent);
             if (hazard.hazard) {
-                skip |= LogError(dstImage, string_SyncHazardVUID(hazard.hazard), "Hazard %s for dstImage %s, region %" PRIu32,
+                skip |= LogError(dstImage, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyBufferToImage: Hazard %s for dstImage %s, region %" PRIu32,
                                  string_SyncHazard(hazard.hazard), report_data->FormatHandle(dstImage).c_str(), region);
             }
             if (skip) break;
@@ -1187,7 +1194,8 @@ bool SyncValidator::PreCallValidateCmdCopyImageToBuffer(VkCommandBuffer commandB
             auto hazard = context->DetectHazard(*src_image, SYNC_TRANSFER_TRANSFER_READ, copy_region.imageSubresource,
                                                 copy_region.imageOffset, copy_region.imageExtent);
             if (hazard.hazard) {
-                skip |= LogError(srcImage, string_SyncHazardVUID(hazard.hazard), "Hazard %s for srcImage %s, region %" PRIu32,
+                skip |= LogError(srcImage, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyImageToBuffer: Hazard %s for srcImage %s, region %" PRIu32,
                                  string_SyncHazard(hazard.hazard), report_data->FormatHandle(srcImage).c_str(), region);
             }
         }
@@ -1197,7 +1205,8 @@ bool SyncValidator::PreCallValidateCmdCopyImageToBuffer(VkCommandBuffer commandB
             auto hazard = context->DetectHazard(VulkanTypedHandle(dst_mem, kVulkanObjectTypeDeviceMemory),
                                                 SYNC_TRANSFER_TRANSFER_WRITE, dst_range);
             if (hazard.hazard) {
-                skip |= LogError(dstBuffer, string_SyncHazardVUID(hazard.hazard), "Hazard %s for dstBuffer %s, region %" PRIu32,
+                skip |= LogError(dstBuffer, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdCopyImageToBuffer: Hazard %s for dstBuffer %s, region %" PRIu32,
                                  string_SyncHazard(hazard.hazard), report_data->FormatHandle(dstBuffer).c_str(), region);
             }
         }
@@ -1258,8 +1267,9 @@ bool SyncValidator::PreCallValidateCmdBlitImage(VkCommandBuffer commandBuffer, V
             auto hazard = context->DetectHazard(*src_image, SYNC_TRANSFER_TRANSFER_READ, blit_region.srcSubresource,
                                                 blit_region.srcOffsets[0], extent);
             if (hazard.hazard) {
-                skip |= LogError(srcImage, string_SyncHazardVUID(hazard.hazard), "Hazard %s for srcImage %s, region %" PRIu32,
-                                 string_SyncHazard(hazard.hazard), report_data->FormatHandle(srcImage).c_str(), region);
+                skip |= LogError(srcImage, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdBlitImage: Hazard %s for srcImage %s, region %" PRIu32, string_SyncHazard(hazard.hazard),
+                                 report_data->FormatHandle(srcImage).c_str(), region);
             }
         }
 
@@ -1270,8 +1280,9 @@ bool SyncValidator::PreCallValidateCmdBlitImage(VkCommandBuffer commandBuffer, V
             auto hazard = context->DetectHazard(*dst_image, SYNC_TRANSFER_TRANSFER_WRITE, blit_region.dstSubresource,
                                                 blit_region.dstOffsets[0], extent);
             if (hazard.hazard) {
-                skip |= LogError(dstImage, string_SyncHazardVUID(hazard.hazard), "Hazard %s for dstImage %s, region %" PRIu32,
-                                 string_SyncHazard(hazard.hazard), report_data->FormatHandle(dstImage).c_str(), region);
+                skip |= LogError(dstImage, string_SyncHazardVUID(hazard.hazard),
+                                 "vkCmdBlitImage: Hazard %s for dstImage %s, region %" PRIu32, string_SyncHazard(hazard.hazard),
+                                 report_data->FormatHandle(dstImage).c_str(), region);
             }
             if (skip) break;
         }
