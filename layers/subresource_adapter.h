@@ -565,6 +565,96 @@ class OffsetRangeGenerator {
     VkOffset2D offset_index_ = {};
 };
 
+class LayoutRangeEncoder;
+
+struct SubresourceLayout : public Subresource {
+    // It doesn't save offset.z. If the z > 1, the z will save in arrayLayer.
+    VkSubresourceLayout sub_layout;
+    SubresourceLayout() : Subresource(), sub_layout() {}
+    SubresourceLayout(const SubresourceLayout& from) = default;
+    SubresourceLayout(const LayoutRangeEncoder& encoder, const VkImageSubresource& subres, const VkSubresourceLayout& sub_layout);
+    SubresourceLayout(VkImageAspectFlags aspect_mask_, uint32_t mip_level_, uint32_t array_layer_, uint32_t aspect_index_,
+                      const VkSubresourceLayout& sub_layout_)
+        : Subresource(aspect_mask_, mip_level_, array_layer_, aspect_index_), sub_layout(sub_layout_) {}
+
+    SubresourceLayout(VkImageAspectFlagBits aspect_, uint32_t mip_level_, uint32_t array_layer_, uint32_t aspect_index_,
+                      const VkSubresourceLayout& sub_layout_)
+        : SubresourceLayout(static_cast<VkImageAspectFlags>(aspect_), mip_level_, array_layer_, aspect_index_, sub_layout_) {}
+
+    SubresourceLayout& operator=(const Subresource& sub) {
+        Subresource::operator=(sub);
+        return *this;
+    }
+};
+
+class LayoutRangeEncoder : public RangeEncoder {
+  public:
+    // The default constructor for default iterators
+    LayoutRangeEncoder() : limits_(), encode_sub_layout_function_(nullptr), decode_sub_layout_function_(nullptr) {}
+
+    LayoutRangeEncoder(const VkImageSubresourceRange& full_range, const VkExtent3D& full_range_image_extent,
+                       const AspectParameters* param);
+    // Create the encoder suitable to the full range (aspect mask *must* be canonical)
+    LayoutRangeEncoder(const VkImageSubresourceRange& full_range, const VkExtent3D& full_range_image_extent)
+        : LayoutRangeEncoder(full_range, full_range_image_extent, AspectParameters::Get(full_range.aspectMask)) {}
+    LayoutRangeEncoder(const LayoutRangeEncoder& from);
+    inline bool InRange(const VkImageSubresource& subres, const VkSubresourceLayout& sub_layout) const {
+        bool in_range = (subres.mipLevel < limits_.mipLevel) && (subres.arrayLayer < limits_.arrayLayer) &&
+                        (subres.aspectMask & limits_.aspectMask) && (sub_layout.arrayPitch < limits_.sub_layout.arrayPitch) &&
+                        (sub_layout.depthPitch < limits_.sub_layout.depthPitch) &&
+                        (sub_layout.offset < limits_.sub_layout.offset) && (sub_layout.rowPitch < limits_.sub_layout.rowPitch) &&
+                        (sub_layout.size < limits_.sub_layout.size);
+        return in_range;
+    }
+    inline bool InRange(const VkImageSubresourceRange& range, const VkSubresourceLayout& sub_layout) const {
+        bool in_range =
+            (range.baseMipLevel < limits_.mipLevel) && ((range.baseMipLevel + range.levelCount) <= limits_.mipLevel) &&
+            (range.baseArrayLayer < limits_.arrayLayer) && ((range.baseArrayLayer + range.layerCount) <= limits_.arrayLayer) &&
+            (range.aspectMask & limits_.aspectMask) && (sub_layout.arrayPitch < limits_.sub_layout.arrayPitch) &&
+            (sub_layout.depthPitch < limits_.sub_layout.depthPitch) && (sub_layout.offset < limits_.sub_layout.offset) &&
+            (sub_layout.rowPitch < limits_.sub_layout.rowPitch) && (sub_layout.size < limits_.sub_layout.size);
+        return in_range;
+    }
+
+    inline SubresourceLayout BeginSubresourceLayout(const VkImageSubresourceRange& range,
+                                                    const VkSubresourceLayout& sub_layout) const {
+        const auto aspect_index = LowerBoundFromMask(range.aspectMask);
+        SubresourceLayout begin(AspectBit(aspect_index), range.baseMipLevel, range.baseArrayLayer, aspect_index, sub_layout);
+        return begin;
+    }
+
+    inline IndexType Encode(const SubresourceLayout& pos) const {
+        return (this->*(encode_sub_layout_function_))(pos) + pos.sub_layout.offset + RangeEncoder::Encode(pos);
+    }
+
+    inline IndexType Encode(const VkImageSubresource& subres, const VkSubresourceLayout& sub_layout) const {
+        return Encode(SubresourceLayout(*this, subres, sub_layout));
+    }
+
+    SubresourceLayout Decode(const IndexType& index) const {
+        SubresourceLayout decode = {};
+        IndexType subresouce_index = (this->*decode_sub_layout_function_)(index, decode);
+        decode = RangeEncoder::Decode(subresouce_index);
+        return decode;
+    }
+
+    inline const SubresourceLayout& Limits() const { return limits_; }
+
+  protected:
+    void PopulateFunctionPointers();
+
+    IndexType EncodeOnly(const SubresourceLayout& pos) const;
+
+    IndexType DecodeOnly(const IndexType& encode, SubresourceLayout& layout_decode) const;
+
+  private:
+    VkSubresourceLayout full_range_sub_layout;
+    SubresourceLayout limits_;
+    IndexType (LayoutRangeEncoder::*encode_sub_layout_function_)(const SubresourceLayout&) const;
+    IndexType (LayoutRangeEncoder::*decode_sub_layout_function_)(const IndexType& encode,
+                                                                 SubresourceLayout& sub_layout_decode) const;
+};
+
 // Designed for use with RangeMap of MappedType
 template <typename Map>
 class ConstMapView {
