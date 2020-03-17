@@ -590,7 +590,7 @@ class LayoutRangeEncoder : public RangeEncoder {
                offset.x * element_size_ + sub_layout_.offset;
     }
 
-    bool Decode(const IndexType& encode, uint32_t& out_layer, VkOffset3D& out_offset) const { 
+    bool Decode(const IndexType& encode, uint32_t& out_layer, VkOffset3D& out_offset) const {
         IndexType decode = encode - sub_layout_.offset;
         out_layer = decode / sub_layout_.arrayPitch;
         assert(limits_.arrayLayer > out_layer);
@@ -606,13 +606,14 @@ class LayoutRangeEncoder : public RangeEncoder {
     }
 
     inline const SubresourceOffset& Limits() const { return limits_; }
+    inline void Reset(const VkSubresourceLayout& sub_layout) { sub_layout_ = sub_layout; }
 
   protected:
-
   private:
+    const VkExtent3D full_range_image_extent_;
     const VkFormat image_format_;
     const VkDeviceSize element_size_;
-    const VkSubresourceLayout sub_layout_;
+    VkSubresourceLayout sub_layout_;
     const SubresourceOffset limits_;
 };
 
