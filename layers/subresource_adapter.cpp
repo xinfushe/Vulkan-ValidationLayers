@@ -20,6 +20,7 @@
  */
 #include <cassert>
 #include "subresource_adapter.h"
+#include "vk_format_utils.h"
 
 namespace subresource_adapter {
 Subresource::Subresource(const RangeEncoder& encoder, const VkImageSubresource& subres)
@@ -442,6 +443,18 @@ OffsetRangeGenerator& OffsetRangeGenerator::operator++() {
     }
     return *this;
 }
+
+LayoutRangeEncoder::LayoutRangeEncoder(const VkImageSubresourceRange& full_range, const VkExtent3D& full_range_image_extent,
+                                       const AspectParameters* param, const VkFormat image_format,
+                                       const VkSubresourceLayout& sub_layout)
+    : RangeEncoder(full_range, param),
+      full_range_image_extent_(full_range_image_extent),
+      limits_(param->AspectMask(), full_range.levelCount, full_range.layerCount, param->AspectCount(),
+              {static_cast<int32_t>(full_range_image_extent_.width), static_cast<int32_t>(full_range_image_extent_.height),
+               static_cast<int32_t>(full_range_image_extent_.depth)}),
+      image_format_(image_format),
+      sub_layout_(sub_layout),
+      element_size_(FormatElementSize(image_format)) {}
 
 template <typename AspectTraits>
 class AspectParametersImpl : public AspectParameters {
