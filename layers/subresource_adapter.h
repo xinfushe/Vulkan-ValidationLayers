@@ -694,8 +694,8 @@ class LayoutRangeGenerator {
                          const VkSubresourceLayout& sub_layout);
     inline const IndexRange& operator*() const { return pos_; }
     inline const IndexRange* operator->() const { return &pos_; }
-    SubresourceLayoutGenerator& GetSubresourceOffsetGenerator() { return isr_pos_; }
-    SubresourceLayout& GetSubresourceOffset() { return isr_pos_; }
+    SubresourceLayoutGenerator& GetSubresourceLayoutGenerator() { return isr_pos_; }
+    SubresourceLayout& GetSubresourceLayout() { return isr_pos_; }
     LayoutRangeGenerator& operator++();
 
   private:
