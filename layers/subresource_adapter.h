@@ -630,6 +630,11 @@ class LayoutRangeGenerator {
   private:
     const LayoutRangeEncoder* encoder_;
     IndexRange pos_;
+    IndexRange offset_x_base_;
+    IndexRange offset_y_base_;
+    // It doesn't have offset_count_.z and offset_index_.z. If the z > 1, it will be used in arrayLayer.
+    VkOffset3D offset_count_ = {};
+    VkOffset3D offset_index_ = {};
 };
 
 // Designed for use with RangeMap of MappedType
