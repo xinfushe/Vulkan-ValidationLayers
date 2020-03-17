@@ -581,6 +581,11 @@ class LayoutRangeEncoder : public RangeEncoder {
     LayoutRangeEncoder(const LayoutRangeEncoder& from) = default;
 
     inline IndexType Encode(uint32_t layer, VkOffset3D offset) const {
+        assert(limits_.arrayLayer > layer);
+        assert(limits_.offset.x > offset.x);
+        assert(limits_.offset.y > offset.y);
+        assert(limits_.arrayLayer > offset.z);
+
         return layer * sub_layout_.arrayPitch + offset.z * sub_layout_.depthPitch + offset.y * sub_layout_.rowPitch +
                offset.x * element_size_ + sub_layout_.offset;
     }
@@ -588,12 +593,16 @@ class LayoutRangeEncoder : public RangeEncoder {
     bool Decode(const IndexType& encode, uint32_t& out_layer, VkOffset3D& out_offset) const { 
         IndexType decode = encode - sub_layout_.offset;
         out_layer = decode / sub_layout_.arrayPitch;
+        assert(limits_.arrayLayer > out_layer);
         decode -= (out_layer * sub_layout_.arrayPitch);
         out_offset.z = decode / sub_layout_.depthPitch;
+        assert(limits_.arrayLayer > out_offset.z);
         decode -= (out_offset.z * sub_layout_.depthPitch);
         out_offset.y = decode / sub_layout_.rowPitch;
+        assert(limits_.offset.y > out_offset.y);
         decode -= (out_offset.y * sub_layout_.rowPitch);
         out_offset.x = decode / element_size_;
+        assert(limits_.offset.x > out_offset.x);
     }
 
     inline const SubresourceOffset& Limits() const { return limits_; }
