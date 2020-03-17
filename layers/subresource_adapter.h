@@ -618,11 +618,11 @@ class LayoutRangeEncoder : public RangeEncoder {
 
 class LayoutRangeGenerator {
   public:
-    LayoutRangeGenerator() : encoder_(nullptr), pos_(), aspect_base_() {}
+    LayoutRangeGenerator() : encoder_(nullptr), pos_(){}
     bool operator!=(const LayoutRangeGenerator& rhs) { return (pos_ != rhs.pos_) || (&encoder_ != &rhs.encoder_); }
-    LayoutRangeGenerator(const OffsetRangeEncoder& encoder);
-    LayoutRangeGenerator(const OffsetRangeEncoder& encoder, const VkImageSubresourceRange& subres_range,
-                         const VkSubresourceLayout& sub_layout);
+    LayoutRangeGenerator(const LayoutRangeEncoder& encoder);
+    LayoutRangeGenerator(const LayoutRangeEncoder& encoder, const uint32_t baseArrayLayer, const uint32_t layerCount,
+                         const VkOffset3D& offset, const VkExtent3D& extent);
     inline const IndexRange& operator*() const { return pos_; }
     inline const IndexRange* operator->() const { return &pos_; }
     LayoutRangeGenerator& operator++();
@@ -630,13 +630,6 @@ class LayoutRangeGenerator {
   private:
     const LayoutRangeEncoder* encoder_;
     IndexRange pos_;
-    IndexRange aspect_base_;
-    IndexRange offset_x_base_;
-    IndexRange offset_y_base_;
-    uint32_t mip_count_ = 0;
-    uint32_t mip_index_ = 0;
-    uint32_t aspect_count_ = 0;
-    uint32_t aspect_index_ = 0;
 };
 
 // Designed for use with RangeMap of MappedType
