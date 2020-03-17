@@ -578,7 +578,7 @@ class LayoutRangeEncoder : public RangeEncoder {
                        const VkFormat image_format, const VkSubresourceLayout& sub_layout)
         : LayoutRangeEncoder(full_range, full_range_image_extent, AspectParameters::Get(full_range.aspectMask), image_format,
                              sub_layout) {}
-    LayoutRangeEncoder(const LayoutRangeEncoder& from);
+    LayoutRangeEncoder(const LayoutRangeEncoder& from) = default;
 
     inline IndexType Encode(uint32_t layer, VkOffset3D offset) const {
         return layer * sub_layout_.arrayPitch + offset.z * sub_layout_.depthPitch + offset.y * sub_layout_.rowPitch +
@@ -607,52 +607,19 @@ class LayoutRangeEncoder : public RangeEncoder {
     const SubresourceOffset limits_;
 };
 
-class SubresourceLayoutGenerator : public SubresourceLayout {
-  public:
-    SubresourceLayoutGenerator() : SubresourceLayout(), encoder_(nullptr), limits_(), limits_sub_layout_(){};
-    SubresourceLayoutGenerator(const LayoutRangeEncoder& encoder, const VkImageSubresourceRange& range,
-                               const VkSubresourceLayout& sub_layout)
-        : SubresourceLayout(encoder.BeginSubresourceLayout(range, sub_layout)),
-          encoder_(&encoder),
-          limits_(range),
-          limits_sub_layout_(sub_layout) {}
-
-    const VkImageSubresourceRange& Limits() const { return limits_; }
-    const VkSubresourceLayout& Limits_SubresourceLayout() const { return limits_sub_layout_; }
-
-    SubresourceLayoutGenerator& operator++() { return *this; }
-
-    // General purpose and slow, when we have no other information to update the generator
-    void Seek(IndexType index) {
-        // skip forward past discontinuities
-        *static_cast<SubresourceLayout* const>(this) = encoder_->Decode(index);
-    }
-
-    const VkImageSubresource& operator*() const { return *this; }
-    const VkImageSubresource* operator->() const { return this; }
-
-  private:
-    const LayoutRangeEncoder* encoder_;
-    VkImageSubresourceRange limits_;
-    VkSubresourceLayout limits_sub_layout_;
-};
-
 class LayoutRangeGenerator {
   public:
-    LayoutRangeGenerator() : encoder_(nullptr), isr_pos_(), pos_(), aspect_base_() {}
+    LayoutRangeGenerator() : encoder_(nullptr), pos_(), aspect_base_() {}
     bool operator!=(const LayoutRangeGenerator& rhs) { return (pos_ != rhs.pos_) || (&encoder_ != &rhs.encoder_); }
     LayoutRangeGenerator(const OffsetRangeEncoder& encoder);
     LayoutRangeGenerator(const OffsetRangeEncoder& encoder, const VkImageSubresourceRange& subres_range,
                          const VkSubresourceLayout& sub_layout);
     inline const IndexRange& operator*() const { return pos_; }
     inline const IndexRange* operator->() const { return &pos_; }
-    SubresourceLayoutGenerator& GetSubresourceLayoutGenerator() { return isr_pos_; }
-    SubresourceLayout& GetSubresourceLayout() { return isr_pos_; }
     LayoutRangeGenerator& operator++();
 
   private:
     const LayoutRangeEncoder* encoder_;
-    SubresourceLayoutGenerator isr_pos_;
     IndexRange pos_;
     IndexRange aspect_base_;
     IndexRange offset_x_base_;
