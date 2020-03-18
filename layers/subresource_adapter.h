@@ -569,7 +569,7 @@ class OffsetRangeGenerator {
 class LayoutRangeEncoder : public RangeEncoder {
   public:
     // The default constructor for default iterators
-    LayoutRangeEncoder() : limits_(), sub_layout_(), image_format_(), element_size_() {}
+    LayoutRangeEncoder() : limits_(), sub_layout_(), image_format_(), element_size_(), full_range_image_extent_() {}
 
     LayoutRangeEncoder(const VkImageSubresourceRange& full_range, const VkExtent3D& full_range_image_extent,
                        const AspectParameters* param, const VkFormat image_format, const VkSubresourceLayout& sub_layout);
@@ -606,6 +606,7 @@ class LayoutRangeEncoder : public RangeEncoder {
     }
 
     inline const SubresourceOffset& Limits() const { return limits_; }
+    inline const VkSubresourceLayout& SubLayout() const { return sub_layout_; }
     inline void Reset(const VkSubresourceLayout& sub_layout) { sub_layout_ = sub_layout; }
 
   protected:
@@ -619,7 +620,7 @@ class LayoutRangeEncoder : public RangeEncoder {
 
 class LayoutRangeGenerator {
   public:
-    LayoutRangeGenerator() : encoder_(nullptr), pos_(){}
+    LayoutRangeGenerator() : encoder_(nullptr), pos_(), offset_x_base_(), offset_y_base_() {}
     bool operator!=(const LayoutRangeGenerator& rhs) { return (pos_ != rhs.pos_) || (&encoder_ != &rhs.encoder_); }
     LayoutRangeGenerator(const LayoutRangeEncoder& encoder);
     LayoutRangeGenerator(const LayoutRangeEncoder& encoder, const uint32_t baseArrayLayer, const uint32_t layerCount,
@@ -627,6 +628,7 @@ class LayoutRangeGenerator {
     inline const IndexRange& operator*() const { return pos_; }
     inline const IndexRange* operator->() const { return &pos_; }
     LayoutRangeGenerator& operator++();
+    inline void Reset();
 
   private:
     const LayoutRangeEncoder* encoder_;
@@ -634,8 +636,8 @@ class LayoutRangeGenerator {
     IndexRange offset_x_base_;
     IndexRange offset_y_base_;
     // It doesn't have offset_count_.z and offset_index_.z. If the z > 1, it will be used in arrayLayer.
-    VkOffset3D offset_count_ = {};
-    VkOffset3D offset_index_ = {};
+    VkOffset2D offset_count_ = {};
+    VkOffset2D offset_index_ = {};
 };
 
 // Designed for use with RangeMap of MappedType

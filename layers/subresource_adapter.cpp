@@ -456,6 +456,108 @@ LayoutRangeEncoder::LayoutRangeEncoder(const VkImageSubresourceRange& full_range
       sub_layout_(sub_layout),
       element_size_(FormatElementSize(image_format)) {}
 
+static bool IsValid(const LayoutRangeEncoder& encoder, const uint32_t baseArrayLayer, const uint32_t layerCount,
+                    const VkOffset3D& offset, const VkExtent3D& extent) {
+    const auto& limits = encoder.Limits();
+    return ((baseArrayLayer + layerCount <= limits.arrayLayer) &&
+            ((offset.x + static_cast<int32_t>(extent.width)) <= limits.offset.x) &&
+            ((offset.y + static_cast<int32_t>(extent.height)) <= limits.offset.y) &&
+            ((offset.z + static_cast<int32_t>(extent.depth)) <= limits.arrayLayer));
+}
+
+LayoutRangeGenerator::LayoutRangeGenerator(const LayoutRangeEncoder& encoder, const uint32_t baseArrayLayer,
+                                           const uint32_t layerCount, const VkOffset3D& offset, const VkExtent3D& extent)
+    : encoder_(&encoder), pos_(), offset_x_base_(), offset_y_base_() {
+    assert(IsValid(encoder, baseArrayLayer, layerCount, offset, extent));
+
+    // To see if we have a full range special case, need to compare the subres_range against the *encoders* limits
+    const auto& limits = encoder.Limits();
+
+    if (baseArrayLayer == 0 && layerCount == limits.arrayLayer) {
+        if (offset.y == 0 && extent.height == limits.offset.y) {
+            if (offset.x == 0 && extent.width == limits.offset.x) {
+                // Full range
+                pos_.begin = 0;
+                pos_.end = encoder.SubLayout() * limits.offset.;
+                offset_count_ = {1, 1};
+            } else {
+                // Not full Y range
+                pos_.begin = encoder.OffsetYSize() * offset.y + encoder.OffsetYSize() * offset.y;
+                pos_.end = pos_.begin + encoder.OffsetYSize() * extent.height;
+                offset_count_ = {1, 1};
+            }
+        } else {
+            // Not full X Y range
+            pos_.begin = encoder.OffsetYSize() * offset.y + +encoder.OffsetXSize() * offset.x;
+            pos_.end = pos_.begin + encoder.OffsetXSize() * extent.width;
+            offset_count_ = {1, static_cast<int32_t>(extent.height)};
+        }
+    } else {
+        pos_.begin = encoder.Encode(baseArrayLayer, offset);
+        pos_.end = pos_.begin + subres_range.layerCount;
+
+        offset_count_ = {static_cast<int32_t>(extent.width), static_cast<int32_t>(extent.height)};
+    }
+
+    // To get to the next aspect range we offset from the last base
+    offset_x_base_ = pos_;
+    offset_y_base_ = pos_;
+    offset_index_ = {0, 0};
+}
+
+LayoutRangeGenerator& LayoutRangeGenerator::operator++() {
+    mip_index_++;
+    // NOTE: If all selected mip levels are done at once, mip_count_ is set to one, not the number of selected mip_levels
+    if (mip_index_ >= mip_count_) {
+        const auto last_aspect_index = aspect_index_;
+        // Seek the next value aspect (if any)
+        aspect_index_ = encoder_->LowerBoundFromMask(isr_pos_.Limits().aspectMask, aspect_index_ + 1);
+        if (aspect_index_ < aspect_count_) {
+            // Force isr_pos to the beginning of this found aspect
+            isr_pos_.SeekAspect(aspect_index_);
+            // SubresourceGenerator should never be at tombstones we we aren't
+            assert(isr_pos_.aspectMask != 0);
+
+            // Offset by the distance between the last start of aspect and *this* start of aspect
+            aspect_base_ += (encoder_->AspectBase(isr_pos_.aspect_index) - encoder_->AspectBase(last_aspect_index));
+            pos_ = aspect_base_;
+            mip_index_ = 0;
+        } else {
+            ++offset_index_.x;
+            if (offset_index_.x < offset_count_.x) {
+                isr_pos_.SeekOffsetX(offset_index_.x);
+                offset_x_base_ += encoder_->OffsetXSize();
+                pos_ = offset_x_base_;
+                aspect_base_ = pos_;
+                mip_index_ = 0;
+                aspect_index_ = encoder_->LowerBoundFromMask(isr_pos_.Limits().aspectMask);
+            } else {
+                ++offset_index_.y;
+                if (offset_index_.y < offset_count_.y) {
+                    isr_pos_.SeekOffsetY(offset_index_.y);
+                    offset_y_base_ += encoder_->OffsetYSize();
+                    pos_ = offset_y_base_;
+                    offset_x_base_ = pos_;
+                    aspect_base_ = pos_;
+                    mip_index_ = 0;
+                    aspect_index_ = encoder_->LowerBoundFromMask(isr_pos_.Limits().aspectMask);
+                    offset_index_.x = 0;
+                } else {
+                    // Tombstone both index range and subresource positions to "At end" convention
+                    pos_ = {0, 0};
+                    isr_pos_.aspectMask = 0;
+                }
+            }
+        }
+    } else {
+        // Note: for the layerCount < full_range.layerCount case, because the generated ranges per mip_level are discontinuous
+        // we have to do each individual array of ranges
+        pos_ += encoder_->MipSize();
+        isr_pos_.SeekMip(isr_pos_.Limits().baseMipLevel + mip_index_);
+    }
+    return *this;
+}
+
 template <typename AspectTraits>
 class AspectParametersImpl : public AspectParameters {
   public:
